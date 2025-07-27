@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mandelbrot Set - Color Viewer</title>
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      color: white;
+      font-family: sans-serif;
+      text-align: center;
+    }
+    canvas {
+      display: block;
+      margin: auto;
+      background: black;
+      cursor: crosshair;
+    }
+    h1 {
+      margin: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Mandelbrot Set - Color Viewer</h1>
+  <canvas id="canvas" width="800" height="600"></canvas>
+
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    let width = canvas.width;
+    let height = canvas.height;
+
+    // Initial view
+    let xmin = -2.5, xmax = 1.5;
+    let ymin = -1.5, ymax = 1.5;
+
+    const maxIter = 500;
+
+    function hsvToRgb(h, s, v) {
+      let r, g, b;
+      let i = Math.floor(h * 6);
+      let f = h * 6 - i;
+      let p = v * (1 - s);
+      let q = v * (1 - f * s);
+      let t = v * (1 - (1 - f) * s);
+      switch (i % 6) {
+        case 0: r = v; g = t; b = p; break;
+        case 1: r = q; g = v; b = p; break;
+        case 2: r = p; g = v; b = t; break;
+        case 3: r = p; g = q; b = v; break;
+        case 4: r = t; g = p; b = v; break;
+        case 5: r = v; g = p; b = q; break;
+      }
+      return {
+        r: Math.floor(r * 255),
+        g: Math.floor(g * 255),
+        b: Math.floor(b * 255)
+      };
+    }
+
+    function drawMandelbrot() {
+      const imgData = ctx.createImageData(width, height);
+      for (let px = 0; px < width; px++) {
+        for (let py = 0; py < height; py++) {
+          let x0 = xmin + (px / width) * (xmax - xmin);
+          let y0 = ymin + (py / height) * (ymax - ymin);
+          let x = 0, y = 0;
+          let iteration = 0;
+
+          while (x * x + y * y <= 4 && iteration < maxIter) {
+            let xtemp = x * x - y * y + x0;
+            y = 2 * x * y + y0;
+            x = xtemp;
+            iteration++;
+          }
+
+          // Smooth coloring
+          let color;
+          if (iteration === maxIter) {
+            color = { r: 0, g: 0, b: 0 };
+          } else {
+            const logZn = Math.log(x * x + y * y) / 2;
+            const nu = Math.log(logZn / Math.log(2)) / Math.log(2);
+            const smoothIter = iteration + 1 - nu;
+
+            const hue = (0.95 + 20 * smoothIter / maxIter) % 1;
+            color = hsvToRgb(hue, 1, 1);
+          }
+
+          const idx = (py * width + px) * 4;
+          imgData.data[idx] = color.r;
+          imgData.data[idx + 1] = color.g;
+          imgData.data[idx + 2] = color.b;
+          imgData.data[idx + 3] = 255;
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    // Zoom on click
+    canvas.addEventListener("click", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const cx = (e.clientX - rect.left) / width;
+      const cy = (e.clientY - rect.top) / height;
+      const zoomFactor = 0.5;
+
+      const xCenter = xmin + cx * (xmax - xmin);
+      const yCenter = ymin + cy * (ymax - ymin);
+
+      const newWidth = (xmax - xmin) * zoomFactor;
+      const newHeight = (ymax - ymin) * zoomFactor;
+
+      xmin = xCenter - newWidth / 2;
+      xmax = xCenter + newWidth / 2;
+      ymin = yCenter - newHeight / 2;
+      ymax = yCenter + newHeight / 2;
+
+      drawMandelbrot();
+    });
+
+    drawMandelbrot();
+  </script>
+</body>
+</html>
